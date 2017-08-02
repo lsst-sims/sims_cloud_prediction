@@ -155,7 +155,7 @@ if __name__ == "__main__":
     # TODO update dir
     # the files for each date are stored in a subdirectory of /data/allsky
     #dataDir = "/data/allsky/ut" + predDate + "/fits/"
-    dataDir = "/home/drothchi/"
+    dataDir = '/Users/yoachim/Scratch/Cloudy_all_sky/' #  "/home/drothchi/"
     filePrefix = "ut" + predDate + ".daycal."
     filePostfix = ".fits"
     def getFilename(filenum):

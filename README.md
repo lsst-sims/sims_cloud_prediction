@@ -20,4 +20,4 @@ Currently, the code is exercised using the `testPredClouds.py` file. This file r
 
 ## Data
 
-I have uploaded sample data to `lsst-dev01.ncsa.illinois.edu:/lsst/sim-data/cloudy_night_example`
+I have uploaded sample data to `lsst-dev01.ncsa.illinois.edu:/datasets/public_html/sim-data/cloudy_night_example`
