@@ -2,17 +2,13 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import cloudMap
-from cloudMap import CloudMap
 from cloudState import CloudState
-
-import matplotlib.pyplot as plt
-import matplotlib.pylab as pylab
-
 from rmseEstimator import RmseEstimator
 from fftEstimator import FftEstimator
 
-import time
+
+__all__ = ['CloudServer', 'CachedMap']
+
 
 class CloudServer:
 
@@ -26,7 +22,7 @@ class CloudServer:
         self._cachedRmses = {}
 
         # use this estimator for estimating cloud states
-        #self.estimator = FftEstimator
+        # self.estimator = FftEstimator
         self.estimator = RmseEstimator
 
     def isReadyForPrediction(self):
@@ -52,7 +48,7 @@ class CloudServer:
 
     def predCloudMap(self, mjd):
         """ Predict the cloud map
-        
+
         @returns    a CloudMap instance with the predicted cloud cover
         @param      mjd: the time the prediction is requested for
         @throws     RuntimeWarning if not enough cloud maps have been posted
@@ -74,18 +70,17 @@ class CloudServer:
                 cachedMap1 = self._cachedMaps[i - self._NUM_VEL_CALC_FRAMES]
                 cachedMap2 = self._cachedMaps[i]
                 deltaT = cachedMap2.mjd - cachedMap1.mjd
-                self._cachedMaps[i].cloudState = self.estimator.estimateCloudState(
-                        cachedMap1.cloudMap, cachedMap2.cloudMap, deltaT
-                     )
+                self._cachedMaps[i].cloudState = self.estimator.estimateCloudState(cachedMap1.cloudMap,
+                                                                                   cachedMap2.cloudMap,
+                                                                                   deltaT)
 
         vs = [cachedMap.cloudState.vel
-                for cachedMap in self._cachedMaps[self._NUM_VEL_CALC_FRAMES:]]
+              for cachedMap in self._cachedMaps[self._NUM_VEL_CALC_FRAMES:]]
         v = np.median(vs, axis=0)
-        #print("pred vs:", vs)
-        #print("pred median:", v)
 
         predMap = latestMap.transform(CloudState(vel=v), mjd - latestMjd)
         return predMap
+
 
 class CachedMap:
     """ Wrapper class for parameters describing the clouds' dynamical state """
