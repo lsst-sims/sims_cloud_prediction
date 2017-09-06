@@ -1,15 +1,14 @@
 from __future__ import division
 
 from cloudMap import CloudMap
-import abc
+
 
 class CloudStateEstimator(object):
-    #__metaclass__ = abc.ABCMeta
 
     @staticmethod
     def _doEstimateCloudState(map1, map2, deltaT):
-        """ Method to actually do the state estimation. 
-        
+        """ Method to actually do the state estimation.
+
         This method should never be called directly. Instead,
         estimateCloudState() should be called, which does error handling
         and then calls this method.

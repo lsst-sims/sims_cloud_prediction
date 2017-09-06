@@ -15,7 +15,7 @@ npix = hp.nside2npix(nside)
 # ignore pixels in healpix maps with theta > thetaMax
 thetaMax = 70 * np.pi / 180
 
-# use an XY plane with approximately somewhat more pixels than there 
+# use an XY plane with approximately somewhat more pixels than there
 # are in the hpix so we don't lose all resolution at high theta
 xyMax = int(np.sqrt(npix)) * 2
 xyCent = int(xyMax / 2)
@@ -30,11 +30,11 @@ rMax = 0.9 * xyMax / 2
 # It is chosen to make the skymap fill our XY coordinates.
 z = 40
 
-# minimum distance from the sun in pixels 
+# minimum distance from the sun in pixels
 sunAvoidRadius = 30
 
 # y and x are useful for making masks
-y, x = np.ogrid[0:xyMax,0:xyMax]
+y, x = np.ogrid[0:xyMax, 0:xyMax]
 
 # maintain a mask of pixels within rMax
 insideRMaxMask = (y - xyCent)**2 + (x - xyCent)**2 <= rMax**2
@@ -89,8 +89,8 @@ class CloudMap:
                                    sunPos[1] < 0 or sunPos[1] > xyMax):
             print("the passed-in sunPos is invalid:", sunPos)
             # TODO sometimes the sun position is invalid since it got shifted
-            # off the map due to the velocity propagation. This should 
-            # probably be handled better 
+            # off the map due to the velocity propagation. This should
+            # probably be handled better
             sunPos = None
 
         self.cloudData = cloudData
@@ -119,58 +119,58 @@ class CloudMap:
         """
         # this check approximately doubles the total time of this method
         # this function is (or was) about 15% of total execution time
-        #if point[0] < 0 or point[1] < 0 or point[0] > xyMax or point[1] > xyMax:
-        #    raise ValueError("the supplied point:", point, 
+        # if point[0] < 0 or point[1] < 0 or point[0] > xyMax or point[1] > xyMax:
+        #    raise ValueError("the supplied point:", point,
         #                     "is outside the sky map")
 
         # doing mask[p[0],p[1]] is about 50% faster than mask[tuple(p)]
         # this function is (or was) about 15% of total execution time
-        return self.validMask[point[0],point[1]]
+        return self.validMask[point[0], point[1]]
 
     def __getitem__(self, args):
         # given a CartesianSky object cart, this method allows other
         # code to use cart[y,x] instead of having to do cart.cart[y,x]
         # which would breach abstraction anyway
-        (y,x) = args
-        return self.cloudData[y,x]
-    
+        (y, x) = args
+        return self.cloudData[y, x]
+
     def hash(self):
         return hash(self.mapId)
 
     # Comparison methods, allowing for syntax like map1 > map2
     # and map3 <= 100
 
-    def __eq__(self, other): 
+    def __eq__(self, other):
         if isinstance(other, CloudMap):
             return self.cloudData.__eq__(other.cloudData)
         else:
             return self.cloudData.__eq__(other)
 
-    def __ne__(self, other): 
+    def __ne__(self, other):
         if isinstance(other, CloudMap):
             return self.cloudData.__ne__(other.cloudData)
         else:
             return self.cloudData.__ne__(other)
 
-    def __lt__(self, other): 
+    def __lt__(self, other):
         if isinstance(other, CloudMap):
             return self.cloudData.__lt__(other.cloudData)
         else:
             return self.cloudData.__lt__(other)
 
-    def __gt__(self, other): 
+    def __gt__(self, other):
         if isinstance(other, CloudMap):
             return self.cloudData.__gt__(other.cloudData)
         else:
             return self.cloudData.__gt__(other)
 
-    def __le__(self, other): 
+    def __le__(self, other):
         if isinstance(other, CloudMap):
             return self.cloudData.__le__(other.cloudData)
         else:
             return self.cloudData.__le__(other)
 
-    def __ge__(self, other): 
+    def __ge__(self, other):
         if isinstance(other, CloudMap):
             return self.cloudData.__ge__(other.cloudData)
         else:
@@ -178,10 +178,10 @@ class CloudMap:
 
     def getSunPos(self):
         """ Find the position of the sun in the image
-    
-        @returns    a point [y,x] indicating the sun's position 
+
+        @returns    a point [y,x] indicating the sun's position
                     within self.cloudData
-        
+
         This method smooths out the sky map and then finds the maximum
         pixel value in the smoothed image. If the smoothed image has
         multiple pixels which share the same maximum, this chooses
@@ -189,7 +189,7 @@ class CloudMap:
         """
         # average the image to find the sun
         n = 10
-        k = np.ones((n,n)) / n**2
+        k = np.ones((n, n)) / n**2
         avg = convolve2d(self.cloudData, k, mode="same")
 
         sunPos = np.unravel_index(avg.argmax(), avg.shape)
@@ -197,11 +197,11 @@ class CloudMap:
 
     def transform(self, cloudState, time):
         """ Transform our cloud map according to cloudState
-        
+
         TODO CloudMap is now peering at the guts of cloudState, which makes
         the CloudState class effectively only useful as an argument wrapper.
         Calling cloudState.transform(cloudMap, time) is also dicey though
-        because cloudState then needs to know about cloudMap.cloudData. 
+        because cloudState then needs to know about cloudMap.cloudData.
 
         Pixels which are translated from invalid points to valid points take
         the value of the old pixel.
@@ -210,7 +210,7 @@ class CloudMap:
         @param      cloudState: the CloudState for the transformation
         @param      time: the amount of time to propagate cloudState through
         """
-        
+ 
         direction = np.round(np.array(cloudState.vel) * time).astype(int)
 
         # translate the array by padding it with zeros and then cropping off the
@@ -224,7 +224,7 @@ class CloudMap:
         else:
             padX = (0, -1 * direction[1])
 
-        paddedData = np.pad(self.cloudData, (padY, padX), 
+        paddedData = np.pad(self.cloudData, (padY, padX),
                             mode="constant", constant_values=-1)
 
         # if spreading was added to cloudState, might want to deal with that
@@ -233,18 +233,14 @@ class CloudMap:
         # now crop paddedData to the original size
         cropY = (padY[1], paddedData.shape[0] - padY[0])
         cropX = (padX[1], paddedData.shape[1] - padX[0])
-        transformedData = paddedData[cropY[0]:cropY[1],cropX[0]:cropX[1]]
+        transformedData = paddedData[cropY[0]:cropY[1], cropX[0]:cropX[1]]
 
         # replace all pixels which are -1 with the value they used to be
         (invalidY, invalidX) = np.where((transformedData == -1) &
-                                        (self.cloudData  != -1))
-        transformedData[invalidY,invalidX] = self.cloudData[invalidY,invalidX]
+                                        (self.cloudData != -1))
+        transformedData[invalidY, invalidX] = self.cloudData[invalidY, invalidX]
 
-        # np.roll translates with wrap around but we probably don't want this
-        #translatedCart = np.roll(cart, direction[0], axis=0)
-        #translatedCart = np.roll(translatedCart, direction[1], axis=1)
-
-        #TODO need to deal with mapId better
+        # TODO need to deal with mapId better
         mId = self.mapId + str(np.random.random())
         return CloudMap(mId, transformedData, sunPos = self.sunPos + direction)
 
@@ -252,8 +248,6 @@ class CloudMap:
         plt.figure(title)
         pylab.imshow(self.cloudData, vmax = maxPixel, cmap=plt.cm.jet)
         plt.colorbar()
-        # uncomment plt.show() to pause after each call to this function
-        #plt.show()
 
     def max(self):
         return np.max(self.cloudData)
@@ -273,14 +267,14 @@ def fromHpix(mapId, hpix):
     @param      hpix: the healpix to be converted
 
     The top plane in the crude picture below is the cartesian plane
-    where the clouds live. The dome is the healpix that we're 
+    where the clouds live. The dome is the healpix that we're
     looking "through" to see the clouds
     _________________
           ___
          /   \
         |  o  |
 
-    To find out which healpix pixel corresponds to (x,y), we convert 
+    To find out which healpix pixel corresponds to (x,y), we convert
     (x,y) to (r,phi). Then, we figure out which theta corresponds to
     the calculated r.
     """
@@ -289,10 +283,10 @@ def fromHpix(mapId, hpix):
     # see fits2Hpix() for an explanation of x, y, and cart
     x = np.repeat([np.arange(-xyCent, xyCent)], xyMax, axis=0).T
     y = np.repeat([np.arange(-xyCent, xyCent)], xyMax, axis=0)
-    cart = np.swapaxes([y,x],0,2)
-    
+    cart = np.swapaxes([y, x], 0, 2)
+
     # calculate theta and phi of each pixel in the cartesian map
-    r = np.linalg.norm(cart, axis=2) 
+    r = np.linalg.norm(cart, axis=2)
     phi = np.arctan2(y, x).T
     theta = np.arctan(r / z)
 
@@ -302,21 +296,22 @@ def fromHpix(mapId, hpix):
     # move back from physical coordinates to array indices
     y += xyCent
     x += xyCent
-    y = y.astype(int) 
+    y = y.astype(int)
     x = x.astype(int)
 
     # set the cloud data pixels to the corresponding hpix pixels
     cloudData = np.zeros((xyMax, xyMax))
-    cloudData[y.flatten(),x.flatten()] = hpix[ipixes.flatten()]
+    cloudData[y.flatten(), x.flatten()] = hpix[ipixes.flatten()]
 
     return CloudMap(mapId, cloudData)
+
 
 def toHpix(cloudMap):
     """ Convert a CloudMap to a healpix image
 
     @returns    a healpix image of the clouds
     @param      cloudMap: a CloudMap with the cloud cover data
-    
+
     For each pixel in hpix, sample from the corresponding pixel in cloudMap
     """
 
@@ -326,7 +321,7 @@ def toHpix(cloudMap):
     r = np.tan(theta) * z
     x = np.floor(r * np.cos(phi)).astype(int)
     y = np.floor(r * np.sin(phi)).astype(int)
-    
+
     # ignore all pixels with zenith angle higher than thetaMax
     x = x[theta < thetaMax]
     y = y[theta < thetaMax]
