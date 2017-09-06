@@ -10,38 +10,44 @@ import matplotlib.pyplot as plt
 import matplotlib.pylab as pylab
 
 
-__all__ = ['CloudMap', 'toHpix', 'fromHpix']
+__all__ = ['CloudMap', 'toHpix', 'fromHpix', 'cloudConfig']
 
 
-nside = 32
-npix = hp.nside2npix(nside)
+class cloudConfig:
+    """
+    Hold some handy default values for the cloud maps
+    """
+    def __init__(self, nside=32, zenith_distance_max=70., cloud_height=40.,
+                 sunAvoidRadius=30.):
+        self.nside = nside
+        self.npix = hp.nside2npix(nside)
 
-# ignore pixels in healpix maps with theta > thetaMax
-thetaMax = np.radians(70.)
+        # ignore pixels in healpix maps with theta > thetaMax
+        self.thetaMax = np.radians(zenith_distance_max)
 
-# use an XY plane with approximately somewhat more pixels than there
-# are in the hpix so we don't lose all resolution at high theta
-xyMax = int(np.sqrt(npix)) * 2
-xyCent = int(xyMax / 2)
+        # use an XY plane with approximately somewhat more pixels than there
+        # are in the hpix so we don't lose all resolution at high theta
+        self.xyMax = int(np.sqrt(self.npix)) * 2
+        self.xyCent = int(self.xyMax / 2)
 
-# when we convert hpix to cartesian, the resulting xy map is square
-# but the signal is only found in a circle inscribed in the square
-# (since the passed-in healpixes don't go all the way to the horizon)
-# rMax is the radius in pixels of that circle
-rMax = 0.9 * xyMax / 2
+        # when we convert hpix to cartesian, the resulting xy map is square
+        # but the signal is only found in a circle inscribed in the square
+        # (since the passed-in healpixes don't go all the way to the horizon)
+        # rMax is the radius in pixels of that circle
+        self.rMax = 0.9 * self.xyMax / 2
 
-# z is the vertical distance in pixels from the observer to the clouds
-# It is chosen to make the skymap fill our XY coordinates.
-z = 40
+        # z is the vertical distance in pixels from the observer to the clouds
+        # It is chosen to make the skymap fill our XY coordinates.
+        self.z = cloud_height
 
-# minimum distance from the sun in pixels
-sunAvoidRadius = 30
+        # minimum distance from the sun in pixels
+        self.sunAvoidRadius = sunAvoidRadius
 
-# y and x are useful for making masks
-y, x = np.ogrid[0:xyMax, 0:xyMax]
+        # y and x are useful for making masks
+        self.y, self.x = np.ogrid[0:self.xyMax, 0:self.xyMax]
 
-# maintain a mask of pixels within rMax
-insideRMaxMask = (y - xyCent)**2 + (x - xyCent)**2 <= rMax**2
+        # maintain a mask of pixels within rMax
+        self.insideRMaxMask = (self.y - self.xyCent)**2 + (self.x - self.xyCent)**2 <= self.rMax**2
 
 
 class CloudMap:
@@ -68,7 +74,8 @@ class CloudMap:
     mean():                 calculate the mean of the valid pixels
     """
 
-    def __init__(self, mapId, cloudData, sunPos = None, nside=32, maskSun=False):
+    def __init__(self, mapId, cloudData, sunPos = None, nside=32, maskSun=False,
+                 cloud_config=None):
         """ Initialize the CartesianSky
 
         @returns    void
@@ -86,11 +93,16 @@ class CloudMap:
         the valid mask for the sky map.
 
         """
+        if cloud_config is None:
+            self.cc = cloudConfig()
+        else:
+            self.cc = cloud_config
+
         self.mapId = mapId
-        if cloudData.shape != (xyMax, xyMax):
+        if cloudData.shape != (self.cc.xyMax, self.cc.xyMax):
             raise ValueError("the passed in cloud data has the wrong shape")
-        if sunPos is not None and (sunPos[0] < 0 or sunPos[0] > xyMax or
-                                   sunPos[1] < 0 or sunPos[1] > xyMax):
+        if sunPos is not None and (sunPos[0] < 0 or sunPos[0] > self.cc.xyMax or
+                                   sunPos[1] < 0 or sunPos[1] > self.cc.xyMax):
             print("the passed-in sunPos is invalid:", sunPos)
             # TODO sometimes the sun position is invalid since it got shifted
             # off the map due to the velocity propagation. This should
@@ -107,10 +119,10 @@ class CloudMap:
 
             # keep track of which pixels are valid
             sunY, sunX = self.sunPos
-            outsideSunMask = (y - sunY)**2 + (x - sunX)**2 >= sunAvoidRadius**2
-            self.validMask = insideRMaxMask & outsideSunMask
+            outsideSunMask = (self.cc.y - sunY)**2 + (self.cc.x - sunX)**2 >= self.cc.sunAvoidRadius**2
+            self.validMask = self.cc.insideRMaxMask & outsideSunMask
         else:
-           self.validMask = insideRMaxMask
+           self.validMask = self.cc.insideRMaxMask
 
         self.cloudData[np.logical_not(self.validMask)] = -1
 
@@ -216,7 +228,7 @@ class CloudMap:
         @param      cloudState: the CloudState for the transformation
         @param      time: the amount of time to propagate cloudState through
         """
- 
+
         direction = np.round(np.array(cloudState.vel) * time).astype(int)
 
         # translate the array by padding it with zeros and then cropping off the
@@ -265,7 +277,7 @@ class CloudMap:
         return np.mean(self.cloudData[self.validMask])
 
 
-def fromHpix(mapId, hpix, nside=32):
+def fromHpix(mapId, hpix, nside=32, cloud_config=None):
     """ Convert a healpix image to a cartesian cloud map
 
     @returns    a CloudMap object with the data from the hpix
@@ -287,32 +299,38 @@ def fromHpix(mapId, hpix, nside=32):
 
     # now for each (x,y), sample the corresponding hpix pixel
     # see fits2Hpix() for an explanation of x, y, and cart
-    x = np.repeat([np.arange(-xyCent, xyCent)], xyMax, axis=0).T
-    y = np.repeat([np.arange(-xyCent, xyCent)], xyMax, axis=0)
+
+    if cloud_config is None:
+            cc = cloudConfig()
+    else:
+        cc = cloud_config
+
+    x = np.repeat([np.arange(-cc.xyCent, cc.xyCent)], cc.xyMax, axis=0).T
+    y = np.repeat([np.arange(-cc.xyCent, cc.xyCent)], cc.xyMax, axis=0)
     cart = np.swapaxes([y, x], 0, 2)
 
     # calculate theta and phi of each pixel in the cartesian map
     r = np.linalg.norm(cart, axis=2)
     phi = np.arctan2(y, x).T
-    theta = np.arctan(r / z)
+    theta = np.arctan(r / cc.z)
 
     # ipixes is an array of pixel indices corresponding to theta and phi
     ipixes = hp.ang2pix(nside, theta, phi)
 
     # move back from physical coordinates to array indices
-    y += xyCent
-    x += xyCent
+    y += cc.xyCent
+    x += cc.xyCent
     y = y.astype(int)
     x = x.astype(int)
 
     # set the cloud data pixels to the corresponding hpix pixels
-    cloudData = np.zeros((xyMax, xyMax))
+    cloudData = np.zeros((cc.xyMax, cc.xyMax))
     cloudData[y.flatten(), x.flatten()] = hpix[ipixes.flatten()]
 
     return CloudMap(mapId, cloudData)
 
 
-def toHpix(cloudMap, nside=32):
+def toHpix(cloudMap, nside=32, cloud_config=None):
     """ Convert a CloudMap to a healpix image
 
     @returns    a healpix image of the clouds
@@ -321,18 +339,23 @@ def toHpix(cloudMap, nside=32):
     For each pixel in hpix, sample from the corresponding pixel in cloudMap
     """
 
-    hpix = np.zeros(npix)
-    (theta, phi) = hp.pix2ang(nside, np.arange(npix))
+    if cloud_config is None:
+        cc = cloudConfig()
+    else:
+        cc = cloud_config
 
-    r = np.tan(theta) * z
+    hpix = np.zeros(cc.npix)
+    (theta, phi) = hp.pix2ang(nside, np.arange(cc.npix))
+
+    r = np.tan(theta) * cc.z
     x = np.floor(r * np.cos(phi)).astype(int)
     y = np.floor(r * np.sin(phi)).astype(int)
 
     # ignore all pixels with zenith angle higher than thetaMax
-    x = x[theta < thetaMax]
-    y = y[theta < thetaMax]
-    ipixes = np.arange(npix)[theta < thetaMax]
+    x = x[theta < cc.thetaMax]
+    y = y[theta < cc.thetaMax]
+    ipixes = np.arange(cc.npix)[theta < cc.thetaMax]
 
-    hpix[ipixes] = cloudMap[x + xyCent, y + xyCent]
+    hpix[ipixes] = cloudMap[x + cc.xyCent, y + cc.xyCent]
 
     return hpix
