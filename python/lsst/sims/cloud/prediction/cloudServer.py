@@ -2,9 +2,8 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-from cloudState import CloudState
-from rmseEstimator import RmseEstimator
-from fftEstimator import FftEstimator
+from lsst.sims.cloud.prediction.cloudState import CloudState
+from lsst.sims.cloud.prediction.rmseEstimator import RmseEstimator
 
 
 __all__ = ['CloudServer', 'CachedMap']

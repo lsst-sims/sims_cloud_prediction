@@ -9,11 +9,15 @@ from scipy.signal import convolve2d
 import matplotlib.pyplot as plt
 import matplotlib.pylab as pylab
 
+
+__all__ = ['CloudMap', 'toHpix', 'fromHpix']
+
+
 nside = 32
 npix = hp.nside2npix(nside)
 
 # ignore pixels in healpix maps with theta > thetaMax
-thetaMax = 70 * np.pi / 180
+thetaMax = np.radians(70.)
 
 # use an XY plane with approximately somewhat more pixels than there
 # are in the hpix so we don't lose all resolution at high theta
@@ -64,7 +68,7 @@ class CloudMap:
     mean():                 calculate the mean of the valid pixels
     """
 
-    def __init__(self, mapId, cloudData, sunPos = None):
+    def __init__(self, mapId, cloudData, sunPos = None, nside=32, maskSun=False):
         """ Initialize the CartesianSky
 
         @returns    void
@@ -95,16 +99,18 @@ class CloudMap:
 
         self.cloudData = cloudData
         # allow the caller to pass in a sunPos if it's already known
-        if sunPos is None:
-            self.sunPos = self.getSunPos()
+        if maskSun:
+            if sunPos is None:
+                self.sunPos = self.getSunPos()
+            else:
+                self.sunPos = sunPos
+
+            # keep track of which pixels are valid
+            sunY, sunX = self.sunPos
+            outsideSunMask = (y - sunY)**2 + (x - sunX)**2 >= sunAvoidRadius**2
+            self.validMask = insideRMaxMask & outsideSunMask
         else:
-            self.sunPos = sunPos
-
-        # keep track of which pixels are valid
-        sunY, sunX = self.sunPos
-        outsideSunMask = (y - sunY)**2 + (x - sunX)**2 >= sunAvoidRadius**2
-
-        self.validMask = insideRMaxMask & outsideSunMask
+           self.validMask = insideRMaxMask
 
         self.cloudData[np.logical_not(self.validMask)] = -1
 
@@ -259,7 +265,7 @@ class CloudMap:
         return np.mean(self.cloudData[self.validMask])
 
 
-def fromHpix(mapId, hpix):
+def fromHpix(mapId, hpix, nside=32):
     """ Convert a healpix image to a cartesian cloud map
 
     @returns    a CloudMap object with the data from the hpix
@@ -306,7 +312,7 @@ def fromHpix(mapId, hpix):
     return CloudMap(mapId, cloudData)
 
 
-def toHpix(cloudMap):
+def toHpix(cloudMap, nside=32):
     """ Convert a CloudMap to a healpix image
 
     @returns    a healpix image of the clouds

@@ -1,9 +1,8 @@
 from __future__ import division
 
-from cloudStateEstimator import CloudStateEstimator
-from cloudState import CloudState
-from cloudMap import CloudMap
-import cloudMap
+from lsst.sims.cloud.prediction.cloudStateEstimator import CloudStateEstimator
+from lsst.sims.cloud.prediction.cloudState import CloudState
+from lsst.sims.cloud.prediction.cloudMap import CloudMap
 from scipy.optimize import minimize
 from scipy.interpolate import RectBivariateSpline
 
@@ -111,7 +110,7 @@ class RmseEstimator(CloudStateEstimator):
         -----------
         """
 
-        xyMax = cloudMap.xyMax
+        xyMax = map1.xyMax
 
         yStart = max(0, direction[0])
         xStart = max(0, direction[1])

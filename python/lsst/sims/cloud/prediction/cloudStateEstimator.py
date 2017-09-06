@@ -1,6 +1,6 @@
 from __future__ import division
 
-from cloudMap import CloudMap
+from lsst.sims.cloud.prediction.cloudMap import CloudMap
 
 
 class CloudStateEstimator(object):
