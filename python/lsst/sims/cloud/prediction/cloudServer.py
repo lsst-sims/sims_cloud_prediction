@@ -11,11 +11,18 @@ __all__ = ['CloudServer', 'CachedMap']
 
 class CloudServer:
 
-    def __init__(self):
+    def __init__(self, frame_gap=1):
+        """
+        Paramters
+        ---------
+        frame_gap : int (1)
+            The gap between frames to calculate velocity. (number)
+        """
         # throw out stale cloud maps once we reach more than this many
         self._MAX_CACHED_MAPS = 40
         # calculate velocity vectors between frames this far apart
-        self._NUM_VEL_CALC_FRAMES = 20
+        # XXX---uuuuuggggghhhh. This should be a time gap I think.
+        self._NUM_VEL_CALC_FRAMES = frame_gap
 
         self._cachedMaps = []
         self._cachedRmses = {}
@@ -63,7 +70,8 @@ class CloudServer:
         if mjd <= latestMjd:
             raise ValueError("can't predict the past")
 
-        # calculate cloudState for all pairs
+        # calculate cloudState for all pairs that are the desired gap appart.
+        # XXX-TOO. Do we want to do the full matrix of the i,j-th velocity calculation?
         for i in range(self._NUM_VEL_CALC_FRAMES, numMaps):
             if self._cachedMaps[i].cloudState is None:
                 cachedMap1 = self._cachedMaps[i - self._NUM_VEL_CALC_FRAMES]

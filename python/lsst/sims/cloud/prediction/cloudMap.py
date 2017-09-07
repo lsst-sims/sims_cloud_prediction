@@ -14,11 +14,26 @@ __all__ = ['CloudMap', 'toHpix', 'fromHpix', 'cloudConfig']
 
 
 class cloudConfig:
+    """Hold some handy default values for the cloud maps
     """
-    Hold some handy default values for the cloud maps
-    """
-    def __init__(self, nside=32, zenith_distance_max=70., cloud_height=40.,
+    def __init__(self, nside=32, zenith_distance_max=70., height_scale=3.,
                  sunAvoidRadius=30.):
+        """Hold default parameters about resolution of cloud mask model
+
+        Parameters
+        ----------
+        nside : int (32)
+            The HEALpixel nside to use for sky maps
+        zenith_distance_max : float (70.)
+            The maximum zenith distance in degrees to compute the map. Default
+            of 70 degrees ~ 2.9 airmass (80 degrees would be X=5.8)
+        height_scale : float (3.)
+            The height of the cloud layer relative to the cloud plane size.
+            (I think this just scales the velocities up and down?)
+        sunAvoidRadius : float (30.)
+            Avoid area around the sun with this radius (pixels)
+
+        """
         self.nside = nside
         self.npix = hp.nside2npix(nside)
 
@@ -38,6 +53,7 @@ class cloudConfig:
 
         # z is the vertical distance in pixels from the observer to the clouds
         # It is chosen to make the skymap fill our XY coordinates.
+        cloud_height = self.xyMax/2./height_scale
         self.z = cloud_height
 
         # minimum distance from the sun in pixels
@@ -74,24 +90,24 @@ class CloudMap:
     mean():                 calculate the mean of the valid pixels
     """
 
-    def __init__(self, mapId, cloudData, sunPos = None, nside=32, maskSun=False,
+    def __init__(self, mapId, cloudData, sunPos = None, maskSun=False,
                  cloud_config=None):
         """ Initialize the CartesianSky
 
-        @returns    void
-        @param      mapId: a unique identifier for the map (this is used
-                    to avoid hashing the entire np.array upon a call to
-                    hash(). If the map doesn't need to be hashable then
-                    mapId can go away
-        @param      cloudData: a np.array with the cloud cover pixel values
-        @param      sunPos (optional): the position of the sun in the image
-                    If not passed in, it will be calculated
-        @throws     ValueError if cloudData has the wrong shape or sunPos is
-                    outside of the image
-
-        Calculates the sun position if None is passed in and then calculates
-        the valid mask for the sky map.
-
+        Parameters
+        ----------
+        mapId : hashable (string, or number are good)
+            a unique identifier for the map (this is used
+            to avoid hashing the entire np.array upon a call to
+            hash(). If the map doesn't need to be hashable then
+            mapId can go away
+        cloudData : np.array
+            cloud cover pixel values in an x-y plane.
+        sunPos : ? (None)
+            Position of the sun in cloudData. Calculates the sun position if None is passed
+            in and then calculates the valid mask for the sky map.
+        cloud_config : cloudConfig instance (None)
+            The configuration object, the default is loaded if set to None.
         """
         if cloud_config is None:
             self.cc = cloudConfig()
@@ -111,18 +127,17 @@ class CloudMap:
 
         self.cloudData = cloudData
         # allow the caller to pass in a sunPos if it's already known
+        if sunPos is None:
+            self.sunPos = self.getSunPos()
+        else:
+            self.sunPos = sunPos
         if maskSun:
-            if sunPos is None:
-                self.sunPos = self.getSunPos()
-            else:
-                self.sunPos = sunPos
-
             # keep track of which pixels are valid
             sunY, sunX = self.sunPos
             outsideSunMask = (self.cc.y - sunY)**2 + (self.cc.x - sunX)**2 >= self.cc.sunAvoidRadius**2
             self.validMask = self.cc.insideRMaxMask & outsideSunMask
         else:
-           self.validMask = self.cc.insideRMaxMask
+            self.validMask = self.cc.insideRMaxMask
 
         self.cloudData[np.logical_not(self.validMask)] = -1
 
@@ -259,7 +274,7 @@ class CloudMap:
         transformedData[invalidY, invalidX] = self.cloudData[invalidY, invalidX]
 
         # TODO need to deal with mapId better
-        mId = self.mapId + str(np.random.random())
+        mId = self.mapId + time
         return CloudMap(mId, transformedData, sunPos = self.sunPos + direction)
 
     def plot(self, maxPixel, title=""):

@@ -33,7 +33,7 @@ class RmseEstimator(CloudStateEstimator):
 
     @staticmethod
     def _doEstimateCloudState(map1, map2, deltaT):
-        initialGuess = np.array([5, 5])
+        initialGuess = np.array([10, 10])
         result = minimize(RmseEstimator._calcInterpolatedRmse,
                           initialGuess,
                           method="CG",
@@ -45,6 +45,7 @@ class RmseEstimator(CloudStateEstimator):
         # from a time later than map1, that means that if, for example, you have
         # to move map2 down to make it look like map1, then the clouds moved up
         # between map1 and map2. Therefore we need the minus sign here
+        import pdb ; pdb.set_trace()
         cloudVelocity = -1 * result.x / deltaT
         return CloudState(vel=cloudVelocity)
 
@@ -110,7 +111,8 @@ class RmseEstimator(CloudStateEstimator):
         -----------
         """
 
-        xyMax = map1.xyMax
+        # Just going to assume all maps are the same size
+        xyMax = map1.cc.xyMax
 
         yStart = max(0, direction[0])
         xStart = max(0, direction[1])
