@@ -48,15 +48,17 @@ class TestMaps(unittest.TestCase):
         for i in range(4):
             temp_map = blank_map.cloudData.copy()
             temp_map[start:start+block_size, start:start+block_size] = 1
-            maps.append(cp.CloudMap(i, temp_map))
+            mjd = i*time_step/24./60.
+            maps.append(cp.CloudMap(i, temp_map, mjd))
             start += step_size
-            mjds.append(i*time_step/24./60.)
+            mjds.append(mjd)
+
 
 
         # Start up a cloud server
         cs = cp.CloudServer()
         for i in range(3):
-            cs.postCloudMap(mjds[i], maps[i])
+            cs.postCloudMap(maps[i])
 
         predicted_map = cs.predCloudMap(mjds[-1])
 

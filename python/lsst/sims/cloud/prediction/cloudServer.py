@@ -34,7 +34,7 @@ class CloudServer:
     def isReadyForPrediction(self):
         return len(self._cachedMaps) > self._NUM_VEL_CALC_FRAMES
 
-    def postCloudMap(self, mjd, cloudMap):
+    def postCloudMap(self, cloudMap):
         """ Notify CloudServer that a new cloud map is available
 
         @returns    void
@@ -45,10 +45,10 @@ class CloudServer:
         """
 
         if len(self._cachedMaps) > 0:
-            if mjd <= self._cachedMaps[-1].mjd:
+            if cloudMap.mjd <= self._cachedMaps[-1].mjd:
                 raise ValueError("cloud maps must be posted in order of mjd")
 
-        self._cachedMaps.append(CachedMap(mjd, cloudMap))
+        self._cachedMaps.append(CachedMap(cloudMap.mjd, cloudMap))
         if len(self._cachedMaps) > self._MAX_CACHED_MAPS:
             self._cachedMaps.pop(0)
 

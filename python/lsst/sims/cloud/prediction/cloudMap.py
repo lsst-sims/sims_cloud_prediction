@@ -90,8 +90,8 @@ class CloudMap:
     mean():                 calculate the mean of the valid pixels
     """
 
-    def __init__(self, mapId, cloudData, sunPos = None, maskSun=False,
-                 cloud_config=None):
+    def __init__(self, mapId, cloudData, mjd, sunPos = None, maskSun=False,
+                 cloud_config=None, fftpad=20, vel=None):
         """ Initialize the CartesianSky
 
         Parameters
@@ -108,7 +108,12 @@ class CloudMap:
             in and then calculates the valid mask for the sky map.
         cloud_config : cloudConfig instance (None)
             The configuration object, the default is loaded if set to None.
+        ccpad : int (20)
+            The number of pixels to use when computing the FFT of the cloud frame
         """
+
+        self.mjd = mjd
+
         if cloud_config is None:
             self.cc = cloudConfig()
         else:
@@ -140,6 +145,31 @@ class CloudMap:
             self.validMask = self.cc.insideRMaxMask
 
         self.cloudData[np.logical_not(self.validMask)] = -1
+        self.fftpad = fftpad
+
+        self.addFFT()
+        self.vel = vel
+
+    def addFFT(self):
+        """Compute the FFT of the cloudData
+        """
+        temp_cloud = self.cloudData.copy()
+        # Set mask pixels to zero
+        temp_cloud[np.where(temp_cloud == -1)] = 0
+        temp_cloud = np.pad(temp_cloud, self.fftpad, 'constant')
+        self.cloudfft = np.fft.fft2(temp_cloud)
+
+    def vrelmap(self, cloud0):
+        """Find the velocity in pix/day between another frame
+        Let's make cloud0 an earlier frame
+        """
+        mult = self.cloudfft * np.conjugate(cloud0.cloudfft)
+        # Cross-correlation of the two cloud planes
+        cc = np.fft.ifft2(mult)
+        i, j = np.unravel_index(cc.argmax(), cc.shape)
+        deltaT = self.mjd - cloud0.mjd
+        vel = np.array([i, j])/deltaT
+        return vel
 
     def isPixelValid(self, point):
         """ Return whether the pixel is a valid part of the sky map
@@ -292,7 +322,7 @@ class CloudMap:
         return np.mean(self.cloudData[self.validMask])
 
 
-def fromHpix(mapId, hpix, nside=32, cloud_config=None):
+def fromHpix(mapId, hpix, mjd=0., nside=32, cloud_config=None):
     """ Convert a healpix image to a cartesian cloud map
 
     @returns    a CloudMap object with the data from the hpix
@@ -342,7 +372,7 @@ def fromHpix(mapId, hpix, nside=32, cloud_config=None):
     cloudData = np.zeros((cc.xyMax, cc.xyMax))
     cloudData[y.flatten(), x.flatten()] = hpix[ipixes.flatten()]
 
-    return CloudMap(mapId, cloudData)
+    return CloudMap(mapId, cloudData, mjd)
 
 
 def toHpix(cloudMap, nside=32, cloud_config=None):
