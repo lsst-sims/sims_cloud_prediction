@@ -2,7 +2,6 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-from lsst.sims.cloud.prediction.cloudState import CloudState
 from lsst.sims.cloud.prediction.rmseEstimator import RmseEstimator
 
 
@@ -45,10 +44,10 @@ class CloudServer:
         """
 
         if len(self._cachedMaps) > 0:
-            if cloudMap.mjd <= self._cachedMaps[-1].mjd:
+            if cloudMap.mjd <= self._cachedMaps[-1].cloudMap.mjd:
                 raise ValueError("cloud maps must be posted in order of mjd")
 
-        self._cachedMaps.append(CachedMap(cloudMap.mjd, cloudMap))
+        self._cachedMaps.append(CachedMap(cloudMap))
         if len(self._cachedMaps) > self._MAX_CACHED_MAPS:
             self._cachedMaps.pop(0)
 
@@ -66,32 +65,29 @@ class CloudServer:
             raise RuntimeWarning("too few clouds have been posted to predict")
 
         latestMap = self._cachedMaps[-1].cloudMap
-        latestMjd = self._cachedMaps[-1].mjd
+        latestMjd = self._cachedMaps[-1].cloudMap.mjd
         if mjd <= latestMjd:
             raise ValueError("can't predict the past")
 
         # calculate cloudState for all pairs that are the desired gap appart.
         # XXX-TOO. Do we want to do the full matrix of the i,j-th velocity calculation?
         for i in range(self._NUM_VEL_CALC_FRAMES, numMaps):
-            if self._cachedMaps[i].cloudState is None:
+            if self._cachedMaps[i].vel is None:
                 cachedMap1 = self._cachedMaps[i - self._NUM_VEL_CALC_FRAMES]
                 cachedMap2 = self._cachedMaps[i]
-                deltaT = cachedMap2.mjd - cachedMap1.mjd
-                self._cachedMaps[i].cloudState = self.estimator.estimateCloudState(cachedMap1.cloudMap,
-                                                                                   cachedMap2.cloudMap,
-                                                                                   deltaT)
+                deltaT = cachedMap2.cloudMap.mjd - cachedMap1.cloudMap.mjd
+                self._cachedMaps[i].vel = cachedMap2.cloudMap.vrelmap(cachedMap1.cloudMap)
 
-        vs = [cachedMap.cloudState.vel
+        vs = [cachedMap.vel
               for cachedMap in self._cachedMaps[self._NUM_VEL_CALC_FRAMES:]]
         v = np.median(vs, axis=0)
 
-        predMap = latestMap.transform(CloudState(vel=v), mjd - latestMjd)
+        predMap = latestMap.transform(v, mjd - latestMjd)
         return predMap
 
 
 class CachedMap:
     """ Wrapper class for parameters describing the clouds' dynamical state """
-    def __init__(self, mjd, cloudMap, cloudState = None):
-        self.mjd = mjd
+    def __init__(self, cloudMap, vel = None):
         self.cloudMap = cloudMap
-        self.cloudState = cloudState
+        self.vel = vel

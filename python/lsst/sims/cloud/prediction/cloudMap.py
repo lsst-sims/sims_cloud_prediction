@@ -156,7 +156,7 @@ class CloudMap:
         temp_cloud = self.cloudData.copy()
         # Set mask pixels to zero
         temp_cloud[np.where(temp_cloud == -1)] = 0
-        temp_cloud = np.pad(temp_cloud, self.fftpad, 'constant')
+        temp_cloud = np.pad(temp_cloud, self.fftpad, 'constant', constant_values=0)
         self.cloudfft = np.fft.fft2(temp_cloud)
 
     def vrelmap(self, cloud0):
@@ -258,7 +258,7 @@ class CloudMap:
         sunPos = np.unravel_index(avg.argmax(), avg.shape)
         return sunPos
 
-    def transform(self, cloudState, time):
+    def transform(self, vel, time):
         """ Transform our cloud map according to cloudState
 
         TODO CloudMap is now peering at the guts of cloudState, which makes
@@ -274,7 +274,7 @@ class CloudMap:
         @param      time: the amount of time to propagate cloudState through
         """
 
-        direction = np.round(np.array(cloudState.vel) * time).astype(int)
+        direction = np.round(np.array(vel) * time).astype(int)
 
         # translate the array by padding it with zeros and then cropping off the
         # extra numbers
@@ -305,7 +305,7 @@ class CloudMap:
 
         # TODO need to deal with mapId better
         mId = self.mapId + time
-        return CloudMap(mId, transformedData, sunPos = self.sunPos + direction)
+        return CloudMap(mId, transformedData, self.mjd+time, sunPos = self.sunPos + direction)
 
     def plot(self, maxPixel, title=""):
         plt.figure(title)

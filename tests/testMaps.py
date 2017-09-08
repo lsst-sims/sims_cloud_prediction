@@ -53,8 +53,6 @@ class TestMaps(unittest.TestCase):
             start += step_size
             mjds.append(mjd)
 
-
-
         # Start up a cloud server
         cs = cp.CloudServer()
         for i in range(3):
@@ -62,11 +60,7 @@ class TestMaps(unittest.TestCase):
 
         predicted_map = cs.predCloudMap(mjds[-1])
 
-        import pdb ; pdb.set_trace()
-
-
-
-
+        assert(np.array_equal(predicted_map.cloudData, maps[-1].cloudData))
 
 
 class TestMemory(lsst.utils.tests.MemoryTestCase):
