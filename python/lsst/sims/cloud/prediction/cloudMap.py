@@ -3,9 +3,7 @@ from __future__ import print_function
 
 import numpy as np
 import healpy as hp
-
 from scipy.signal import convolve2d
-
 import matplotlib.pyplot as plt
 import matplotlib.pylab as pylab
 
@@ -108,8 +106,10 @@ class CloudMap:
             in and then calculates the valid mask for the sky map.
         cloud_config : cloudConfig instance (None)
             The configuration object, the default is loaded if set to None.
-        ccpad : int (20)
+        fftpad : int (20)
             The number of pixels to use when computing the FFT of the cloud frame
+        vel : np.array
+            The x,y velocity of the clouds in this frame in pix/day.
         """
 
         self.mjd = mjd
@@ -258,20 +258,22 @@ class CloudMap:
         sunPos = np.unravel_index(avg.argmax(), avg.shape)
         return sunPos
 
-    def transform(self, vel, time):
-        """ Transform our cloud map according to cloudState
+    def transform(self, vel, time, mId=None):
+        """ Transform our cloud map according to 
 
-        TODO CloudMap is now peering at the guts of cloudState, which makes
-        the CloudState class effectively only useful as an argument wrapper.
-        Calling cloudState.transform(cloudMap, time) is also dicey though
-        because cloudState then needs to know about cloudMap.cloudData.
+        Parameters
+        ----------
+        vel : np.array
+            A two-element array with the x,y velocity in pix/day
+        time : float
+            Amount of time to advance in days.
+        mId : int or str (None)
+            The ID to assing to the returned map
 
-        Pixels which are translated from invalid points to valid points take
-        the value of the old pixel.
+        Returns
+        -------
+        CloudMap object at requested time.
 
-        @returns    the translated map
-        @param      cloudState: the CloudState for the transformation
-        @param      time: the amount of time to propagate cloudState through
         """
 
         direction = np.round(np.array(vel) * time).astype(int)
@@ -304,7 +306,7 @@ class CloudMap:
         transformedData[invalidY, invalidX] = self.cloudData[invalidY, invalidX]
 
         # TODO need to deal with mapId better
-        mId = self.mapId + time
+        mId = mId
         return CloudMap(mId, transformedData, self.mjd+time, sunPos = self.sunPos + direction)
 
     def plot(self, maxPixel, title=""):
