@@ -1,6 +1,5 @@
 from __future__ import division
 from __future__ import print_function
-
 import numpy as np
 import healpy as hp
 import matplotlib
@@ -8,14 +7,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.pylab as pylab
 from astropy.time import Time
-
 import sys
 from datetime import date
-
 from cloudServer import CloudServer
 import cloudMap
-from cloudMap import CloudMap
-
 from astropy.io import fits
 import os
 
@@ -29,6 +24,7 @@ areDimensionsRegistered = False
 fitsWidth = 0
 fitsHeight = 0
 x = y = f = r = phi = theta = orderedIndices = None
+
 
 def registerFitsDimensions(width, height):
     # this method has two purposes: ensure that all fits files being considered
@@ -54,7 +50,7 @@ def registerFitsDimensions(width, height):
     # TODO I'm not totally sure if this is the correct way to calculate
     # the effective focal length. For ut111515, the value I got from
     # Chris Stubbs was 852
-    f = np.sqrt(xCent**2 + yCent**2) / 2 # effective focal length in pixels
+    f = np.sqrt(xCent**2 + yCent**2) / 2  # effective focal length in pixels
 
     # cartesian coordinates in the focal plane
     y, x = np.ogrid[-yCent:yCent, -xCent:xCent]
@@ -69,6 +65,7 @@ def registerFitsDimensions(width, height):
     # this is a list of indices in the order that pixels appear
     # in the fits files
     orderedIndices = hp.ang2pix(cloudMap.nside, theta, phi)
+
 
 def fits2Hpix(fitsData, bias):
     """ Convert a fits image to a healpix map
@@ -89,10 +86,11 @@ def fits2Hpix(fitsData, bias):
 
     hpix = np.zeros(cloudMap.npix)
     hpix[orderedIndices] = fitsData
-    
+
     return hpix
 
-def calcAccuracy(predMap, trueMap): 
+
+def calcAccuracy(predMap, trueMap):
     """ Calculate various forms of accuracy
 
     @returns    a 3-tuple containing the fraction of pixels:

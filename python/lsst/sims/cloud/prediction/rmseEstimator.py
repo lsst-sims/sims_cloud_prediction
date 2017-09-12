@@ -1,9 +1,8 @@
 from __future__ import division
 
-from cloudStateEstimator import CloudStateEstimator
-from cloudState import CloudState
-from cloudMap import CloudMap
-import cloudMap
+from lsst.sims.cloud.prediction.cloudStateEstimator import CloudStateEstimator
+from lsst.sims.cloud.prediction.cloudState import CloudState
+from lsst.sims.cloud.prediction.cloudMap import CloudMap
 from scipy.optimize import minimize
 from scipy.interpolate import RectBivariateSpline
 
@@ -12,16 +11,16 @@ import numpy as np
 
 class RmseEstimator(CloudStateEstimator):
     """ Estimate cloud velocity by minimizing rmse
-    
+
     Shift one map around until it looks maximally like the other map.
     The shift that makes this happen is the velocity vector.
-    
-    Right now I'm using scipy.optimize, which optimizes over the 
+
+    Right now I'm using scipy.optimize, which optimizes over the
     reals, not the integers (makes sense since optimization over
     integers is much harder). To compensate, when scipy asks
     for the loss function at some non-integer pixel offset, I
     interpolate over nearby integer pixel offsets (_calcInterpolatedRmse)
-    
+
     Overall, this method is slow, cumbersome, and inelegant. Unfortunately,
     it works pretty well, and I haven't gotten the FFTEstimator to
     work nearly as well. Alas...
@@ -34,11 +33,11 @@ class RmseEstimator(CloudStateEstimator):
 
     @staticmethod
     def _doEstimateCloudState(map1, map2, deltaT):
-        initialGuess = np.array([5,5])
-        result = minimize(RmseEstimator._calcInterpolatedRmse, 
-                          initialGuess, 
+        initialGuess = np.array([10, 10])
+        result = minimize(RmseEstimator._calcInterpolatedRmse,
+                          initialGuess,
                           method="CG",
-                          options={"eps":1},
+                          options={"eps": 1},
                           args=(map1, map2))
         # TODO I should probably check result.success, but I'm not sure what
         # I would do if it failed, and it seems to always succeed anyway
@@ -46,6 +45,7 @@ class RmseEstimator(CloudStateEstimator):
         # from a time later than map1, that means that if, for example, you have
         # to move map2 down to make it look like map1, then the clouds moved up
         # between map1 and map2. Therefore we need the minus sign here
+        import pdb ; pdb.set_trace()
         cloudVelocity = -1 * result.x / deltaT
         return CloudState(vel=cloudVelocity)
 
@@ -54,14 +54,13 @@ class RmseEstimator(CloudStateEstimator):
         (vy1, vx1) = np.floor(velocity).astype(int)
         (vy2, vx2) = np.ceil(velocity).astype(int)
 
-        directions = [[vy1,vx1],[vy1,vx2],[vy2,vx1],[vy2,vx2]]
-        rmses = [RmseEstimator._calcRmse(direction, map1, map2) 
+        directions = [[vy1, vx1], [vy1, vx2], [vy2, vx1], [vy2, vx2]]
+        rmses = [RmseEstimator._calcRmse(direction, map1, map2)
                  for direction in directions]
-        x = y = np.array([0,1])
-        z = np.array(rmses).reshape(2,2)
-        interpolator = RectBivariateSpline(x,y,z,kx=1,ky=1)
+        x = y = np.array([0, 1])
+        z = np.array(rmses).reshape(2, 2)
+        interpolator = RectBivariateSpline(x, y, z, kx=1, ky=1)
         return interpolator(velocity[0], velocity[1])[0][0]
-
 
     @staticmethod
     def _calcRmse(direction, map1, map2):
@@ -92,7 +91,7 @@ class RmseEstimator(CloudStateEstimator):
         point is in the middle of map1. In the second case, one dimension
         of velocity is negative so the starting point is on an edge of
         map1.
-        
+
             ___________
             |         | map1
             |   ___________
@@ -109,10 +108,11 @@ class RmseEstimator(CloudStateEstimator):
         |   |    x|   | map1
         |   ------|----
         |         |  map2
-        ----------- 
+        -----------
         """
 
-        xyMax = cloudMap.xyMax
+        # Just going to assume all maps are the same size
+        xyMax = map1.cc.xyMax
 
         yStart = max(0, direction[0])
         xStart = max(0, direction[1])
@@ -124,15 +124,15 @@ class RmseEstimator(CloudStateEstimator):
         for y in range(yStart, yEnd, 1):
             for x in range(xStart, xEnd, 1):
                 # ignore pixels which are not valid for both maps
-                if not map1.isPixelValid([y,x]):
+                if not map1.isPixelValid([y, x]):
                     continue
                 yOff = y - direction[0]
                 xOff = x - direction[1]
 
-                if not map2.isPixelValid([yOff,xOff]):
+                if not map2.isPixelValid([yOff, xOff]):
                     continue
 
-                mse += (map1[y,x] - map2[yOff,xOff])**2
+                mse += (map1[y, x] - map2[yOff, xOff])**2
                 numPix += 1
         mse /= numPix
         rmse = np.sqrt(mse)

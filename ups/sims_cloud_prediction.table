@@ -1,0 +1,8 @@
+setupRequired(base)
+setupRequired(numpy)
+setupRequired(matplotlib)
+setupRequired(scipy)
+setupRequired(astropy)
+
+envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
+envPrepend(PATH, ${PRODUCT_DIR}/bin)
