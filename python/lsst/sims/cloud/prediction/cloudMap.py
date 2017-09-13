@@ -88,7 +88,7 @@ class CloudMap:
     mean():                 calculate the mean of the valid pixels
     """
 
-    def __init__(self, mapId, cloudData, mjd, sunPos = None, maskSun=False,
+    def __init__(self, cloudData, mjd, sunPos = None, maskSun=False,
                  cloud_config=None, fftpad=20, vel=None):
         """ Initialize the CartesianSky
 
@@ -118,8 +118,6 @@ class CloudMap:
             self.cc = cloudConfig()
         else:
             self.cc = cloud_config
-
-        self.mapId = mapId
         if cloudData.shape != (self.cc.xyMax, self.cc.xyMax):
             raise ValueError("the passed in cloud data has the wrong shape")
         if sunPos is not None and (sunPos[0] < 0 or sunPos[0] > self.cc.xyMax or
@@ -148,6 +146,11 @@ class CloudMap:
         self.fftpad = fftpad
 
         self.addFFT()
+        self.vel = vel
+
+    def set_vel(self, vel):
+        """Set the velocity of the cloud
+        """
         self.vel = vel
 
     def addFFT(self):
@@ -196,9 +199,6 @@ class CloudMap:
         # which would breach abstraction anyway
         (y, x) = args
         return self.cloudData[y, x]
-
-    def hash(self):
-        return hash(self.mapId)
 
     # Comparison methods, allowing for syntax like map1 > map2
     # and map3 <= 100
@@ -258,7 +258,7 @@ class CloudMap:
         sunPos = np.unravel_index(avg.argmax(), avg.shape)
         return sunPos
 
-    def transform(self, vel, time, mId=None):
+    def transform(self, mjd):
         """ Transform our cloud map according to 
 
         Parameters
@@ -276,7 +276,9 @@ class CloudMap:
 
         """
 
-        direction = np.round(np.array(vel) * time).astype(int)
+        time = mjd - self.mjd
+
+        direction = np.round(np.array(self.vel) * time).astype(int)
 
         # translate the array by padding it with zeros and then cropping off the
         # extra numbers
@@ -300,14 +302,13 @@ class CloudMap:
         cropX = (padX[1], paddedData.shape[1] - padX[0])
         transformedData = paddedData[cropY[0]:cropY[1], cropX[0]:cropX[1]]
 
-        # replace all pixels which are -1 with the value they used to be
+        # replace all pixels which are -1 with 0. 
+        # XXX--need to make clear these are unknown pixels, clouds could blow in
         (invalidY, invalidX) = np.where((transformedData == -1) &
                                         (self.cloudData != -1))
-        transformedData[invalidY, invalidX] = self.cloudData[invalidY, invalidX]
+        transformedData[invalidY, invalidX] = 0
 
-        # TODO need to deal with mapId better
-        mId = mId
-        return CloudMap(mId, transformedData, self.mjd+time, sunPos = self.sunPos + direction)
+        return CloudMap(transformedData, self.mjd+time, sunPos = self.sunPos + direction)
 
     def plot(self, maxPixel, title=""):
         plt.figure(title)
@@ -324,11 +325,10 @@ class CloudMap:
         return np.mean(self.cloudData[self.validMask])
 
 
-def fromHpix(mapId, hpix, mjd=0., nside=32, cloud_config=None):
+def fromHpix(hpix, mjd=0., nside=32, cloud_config=None):
     """ Convert a healpix image to a cartesian cloud map
 
     @returns    a CloudMap object with the data from the hpix
-    @param      mapId: a unique identifier for the map
     @param      hpix: the healpix to be converted
 
     The top plane in the crude picture below is the cartesian plane
@@ -374,7 +374,7 @@ def fromHpix(mapId, hpix, mjd=0., nside=32, cloud_config=None):
     cloudData = np.zeros((cc.xyMax, cc.xyMax))
     cloudData[y.flatten(), x.flatten()] = hpix[ipixes.flatten()]
 
-    return CloudMap(mapId, cloudData, mjd)
+    return CloudMap(cloudData, mjd)
 
 
 def toHpix(cloudMap, nside=32, cloud_config=None):
