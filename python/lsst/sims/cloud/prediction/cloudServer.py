@@ -33,6 +33,8 @@ class CloudServer:
 
         self._cachedMaps = []
         self._cachedMJDs = []
+        # Hold the nside of the maps
+        self.nside = None
 
     def isReadyForPrediction(self):
         # Check that we have a velocity in the latest map
@@ -55,6 +57,11 @@ class CloudServer:
         cloudMap : cloudMap
             A new cloudMap object to add to the internal cache
         """
+
+        if self.nside is None:
+            self.nside = cloudMap.nside
+        elif self.nside != cloudMap.nside:
+            raise ValueError("cloud maps must be same nside resolution")
 
         if len(self._cachedMaps) > 0:
             if cloudMap.mjd <= self._cachedMaps[-1].mjd:

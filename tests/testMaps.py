@@ -35,8 +35,8 @@ class TestMaps(unittest.TestCase):
     def testVel(self):
         """Test that we can fit a velocity and predict the location of a cloud.
         """
-        config = cp.cloudConfig()
-        blank_map = cp.fromHpix(np.zeros(config.npix))
+        config = cp.nside2cloudConfig()
+        blank_map = cp.fromHpix(np.zeros(config['npix']))
 
         block_size = 10
         step_size = 40
