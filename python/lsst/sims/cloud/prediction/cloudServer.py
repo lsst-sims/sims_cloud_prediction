@@ -1,9 +1,7 @@
 from __future__ import division
 from __future__ import print_function
-
 import numpy as np
 from lsst.sims.cloud.prediction import CloudMap
-import matplotlib.pylab as plt
 
 __all__ = ['CloudServer']
 
@@ -119,7 +117,7 @@ class CloudServer:
                 nmaps += 1.
 
         predicted_maps = np.array(predicted_maps)
-        
+
         # use MJD=-1 to make sure this object doesn't get confused with a real cloud map
         predicted_map = CloudMap(np.sum(predicted_maps, axis=0) / nmaps, -1)
 

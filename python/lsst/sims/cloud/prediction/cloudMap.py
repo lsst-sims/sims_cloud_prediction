@@ -94,11 +94,6 @@ class CloudMap:
 
         Parameters
         ----------
-        mapId : hashable (string, or number are good)
-            a unique identifier for the map (this is used
-            to avoid hashing the entire np.array upon a call to
-            hash(). If the map doesn't need to be hashable then
-            mapId can go away
         cloudData : np.array
             cloud cover pixel values in an x-y plane.
         sunPos : ? (None)
@@ -200,45 +195,6 @@ class CloudMap:
         (y, x) = args
         return self.cloudData[y, x]
 
-    # Comparison methods, allowing for syntax like map1 > map2
-    # and map3 <= 100
-
-    def __eq__(self, other):
-        if isinstance(other, CloudMap):
-            return self.cloudData.__eq__(other.cloudData)
-        else:
-            return self.cloudData.__eq__(other)
-
-    def __ne__(self, other):
-        if isinstance(other, CloudMap):
-            return self.cloudData.__ne__(other.cloudData)
-        else:
-            return self.cloudData.__ne__(other)
-
-    def __lt__(self, other):
-        if isinstance(other, CloudMap):
-            return self.cloudData.__lt__(other.cloudData)
-        else:
-            return self.cloudData.__lt__(other)
-
-    def __gt__(self, other):
-        if isinstance(other, CloudMap):
-            return self.cloudData.__gt__(other.cloudData)
-        else:
-            return self.cloudData.__gt__(other)
-
-    def __le__(self, other):
-        if isinstance(other, CloudMap):
-            return self.cloudData.__le__(other.cloudData)
-        else:
-            return self.cloudData.__le__(other)
-
-    def __ge__(self, other):
-        if isinstance(other, CloudMap):
-            return self.cloudData.__ge__(other.cloudData)
-        else:
-            return self.cloudData.__ge__(other)
-
     def getSunPos(self):
         """ Find the position of the sun in the image
 
@@ -325,7 +281,7 @@ class CloudMap:
         return np.mean(self.cloudData[self.validMask])
 
 
-def fromHpix(hpix, mjd=0., nside=32, cloud_config=None):
+def fromHpix(hpix, mjd=0., cloud_config=None):
     """ Convert a healpix image to a cartesian cloud map
 
     @returns    a CloudMap object with the data from the hpix
@@ -346,6 +302,8 @@ def fromHpix(hpix, mjd=0., nside=32, cloud_config=None):
 
     # now for each (x,y), sample the corresponding hpix pixel
     # see fits2Hpix() for an explanation of x, y, and cart
+
+    nside = hp.npix2nside(hpix.size)
 
     if cloud_config is None:
             cc = cloudConfig()
@@ -377,7 +335,7 @@ def fromHpix(hpix, mjd=0., nside=32, cloud_config=None):
     return CloudMap(cloudData, mjd)
 
 
-def toHpix(cloudMap, nside=32, cloud_config=None):
+def toHpix(cloudMap, cloud_config=None):
     """ Convert a CloudMap to a healpix image
 
     @returns    a healpix image of the clouds
@@ -392,7 +350,7 @@ def toHpix(cloudMap, nside=32, cloud_config=None):
         cc = cloud_config
 
     hpix = np.zeros(cc.npix)
-    (theta, phi) = hp.pix2ang(nside, np.arange(cc.npix))
+    (theta, phi) = hp.pix2ang(cc.nside, np.arange(cc.npix))
 
     r = np.tan(theta) * cc.z
     x = np.floor(r * np.cos(phi)).astype(int)
