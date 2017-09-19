@@ -19,7 +19,7 @@ class TestMaps(unittest.TestCase):
         hp_to_cloud = np.where(zenith_angle < np.radians(10.))
         clouds_hp[hp_to_cloud] = 1
 
-        cm = cp.fromHpix(0, clouds_hp)
+        cm = cp.fromHpix(clouds_hp)
         clouds_hp_back = cp.toHpix(cm)
 
         diff = np.abs(clouds_hp[hp_to_cloud]-clouds_hp_back[hp_to_cloud]).sum() / float(hp_to_cloud[0].size)
@@ -35,13 +35,13 @@ class TestMaps(unittest.TestCase):
     def testVel(self):
         """Test that we can fit a velocity and predict the location of a cloud.
         """
-        config = cp.cloudConfig()
-        blank_map = cp.fromHpix(0, np.zeros(config.npix))
+        config = cp.nside2cloudConfig()
+        blank_map = cp.fromHpix(np.zeros(config['npix']))
 
         block_size = 10
         step_size = 40
         start = 50
-        time_step = 10.  # Minutes
+        time_step = 3.  # Minutes
 
         maps = []
         mjds = []
@@ -49,7 +49,7 @@ class TestMaps(unittest.TestCase):
             temp_map = blank_map.cloudData.copy()
             temp_map[start:start+block_size, start:start+block_size] = 1
             mjd = i*time_step/24./60.
-            maps.append(cp.CloudMap(i, temp_map, mjd))
+            maps.append(cp.CloudMap(temp_map, mjd))
             start += step_size
             mjds.append(mjd)
 
