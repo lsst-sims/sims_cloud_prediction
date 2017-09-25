@@ -26,7 +26,7 @@ fitsHeight = 0
 x = y = f = r = phi = theta = orderedIndices = None
 
 
-def registerFitsDimensions(width, height):
+def registerFitsDimensions(width, height, nside=32):
     # this method has two purposes: ensure that all fits files being considered
     # have the same dimensions, and precalculate theta and orderedIndices for
     # use in fits2Hpix so we don't have to recalculate them each time
@@ -64,10 +64,10 @@ def registerFitsDimensions(width, height):
 
     # this is a list of indices in the order that pixels appear
     # in the fits files
-    orderedIndices = hp.ang2pix(cloudMap.nside, theta, phi)
+    orderedIndices = hp.ang2pix(nside, theta, phi)
 
 
-def fits2Hpix(fitsData, bias):
+def fits2Hpix(fitsData, bias, thetaMax, npix):
     """ Convert a fits image to a healpix map
 
     @returns    a healpix map with the fits data in it
@@ -82,9 +82,9 @@ def fits2Hpix(fitsData, bias):
 
     # TODO make this faster: cut off zenith angle in orderedIndices
     # instead of here
-    fitsData[np.where(theta > cloudMap.thetaMax)] = -1
+    fitsData[np.where(theta > thetaMax)] = -1
 
-    hpix = np.zeros(cloudMap.npix)
+    hpix = np.zeros(npix)
     hpix[orderedIndices] = fitsData
 
     return hpix
@@ -114,7 +114,7 @@ def calcAccuracy(predMap, trueMap):
         fracPredClearAndTrueCloudy = 0
     else:
         fracCloudyandCloudy = np.size(
-            np.where((predMap>cloudyThreshold) & (trueMap>cloudyThreshold))[0]
+            np.where((predMap[:,:]>cloudyThreshold) & (trueMap[:,:]>cloudyThreshold))[0]
         ) / numTrueCloudy
 
         #print("Of the pixels which turned out to be cloudy, ",
@@ -122,7 +122,7 @@ def calcAccuracy(predMap, trueMap):
         #      "percent of them were predicted to be cloudy.")
 
         fracPredClearAndTrueCloudy = np.size(
-            np.where((predMap<cloudyThreshold) & (trueMap>cloudyThreshold))[0]
+            np.where((predMap[:,:]<cloudyThreshold) & (trueMap[:,:]>cloudyThreshold))[0]
         ) / numTrueCloudy
 
         #print("Of the pixels which turned out to be cloudy,",
@@ -133,7 +133,7 @@ def calcAccuracy(predMap, trueMap):
         fracPredCloudyAndTrueClear = 0
     else:
         fracPredCloudyAndTrueClear = np.size(
-            np.where((predMap>cloudyThreshold) & (trueMap<cloudyThreshold))[0]
+            np.where((predMap[:,:]>cloudyThreshold) & (trueMap[:,:]<cloudyThreshold))[0]
         ) / numTrueClear
 
         #print("Of the pixels which turned out to be clear,",
@@ -149,6 +149,8 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         exit("usage is testPredClouds.py date")
     predDate = sys.argv[1]
+
+    config = cloudMap.nside2cloudConfig()
 
     # TODO update dir
     # the files for each date are stored in a subdirectory of /data/allsky
@@ -180,7 +182,8 @@ if __name__ == "__main__":
     # put placeholder zeros in each figure to specify the imshow settings
     # this is probably the wrong way of doing this but it doesn't 
     # particularly matter
-    placeholder = np.zeros((cloudMap.xyMax, cloudMap.xyMax))
+    config = cloudMap.nside2cloudConfig()
+    placeholder = np.zeros((config['xyMax'], config['xyMax']))
 
     # I think this sets the physical size of the output
     plt.figsize=(10,10)
@@ -252,11 +255,11 @@ if __name__ == "__main__":
         fitsData = fitsFile.data.astype(float)
         bias = fitsFile.header["bias"]
 
-        hpix = fits2Hpix(fitsData, bias)
-        curMap = cloudMap.fromHpix(str(curFileNum), hpix)
+        hpix = fits2Hpix(fitsData, bias, config['thetaMax'], config['npix'])
+        curMap = cloudMap.fromHpix(hpix, mjd=fitsFile.header["MJD-OBS"])
 
         # and post to the CloudServer
-        cloudServer.postCloudMap(curMjd, curMap)
+        cloudServer.postCloudMap(curMap)
 
         if not cloudServer.isReadyForPrediction():
             # can't predict before we have enough posted to the server
@@ -306,7 +309,7 @@ if __name__ == "__main__":
                 diff[np.where(~predMap.validMask | ~curMap.validMask)] = 0
                 imgs[2,predTimeId].set_data(diff)
 
-                accuracies[i][predTimeId] = list(calcAccuracy(predMap, curMap))
+                accuracies[i][predTimeId] = list(calcAccuracy(predMap, curMap.cloudData))
 
                 axarr[3,predTimeId].cla()
                 axarr[3,predTimeId].set_title("Accuracy")
