@@ -15,7 +15,7 @@ class CloudServer:
         Paramters
         ---------
         velocity_time_max : float (10.)
-            Ignore frames older than this when computing velocity of a frame
+            Ignore frames older than this when computing velocity of a frame (minutes)
         velocity_time_min : float (0.5)
             Don't try to compute velocities between frames if the time between them is
             less than this (default 0.5 mintues)
